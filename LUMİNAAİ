@@ -1,0 +1,88 @@
+Python
+import os
+from flask import Flask, render_template, request, jsonify
+import google.generativeai as genai
+
+app = Flask(__name__, template_folder='.')
+
+# API anahtarını Render panelinden alacak
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+model = genai.GenerativeModel('gemini-pro')
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    user_message = request.json.get('message')
+    try:
+        response = model.generate_content(user_message)
+        return jsonify({'reply': response.text})
+    except Exception as e:
+        return jsonify({'reply': f"Hata oluştu: {str(e)}"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
+Plaintext
+flask
+google-generativeai
+gunicorn
+JSON
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "main.py"
+    }
+  ]
+}
+HTML
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Lumina AI</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f4f4f4; }
+        #chat-box { width: 80%; max-width: 600px; height: 400px; border: 1px solid #ccc; background: white; overflow-y: scroll; padding: 20px; margin-top: 50px; border-radius: 10px; }
+        .input-area { margin-top: 20px; display: flex; gap: 10px; width: 80%; max-width: 600px; }
+        input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Lumina AI</h1>
+    <div id="chat-box"></div>
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Mesajınızı yazın...">
+        <button onclick="sendMessage()">Gönder</button>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const chatBox = document.getElementById('chat-box');
+            if(!input.value) return;
+
+            chatBox.innerHTML += `<p><b>Siz:</b> ${input.value}</p>`;
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: input.value})
+            });
+            const data = await response.json();
+            chatBox.innerHTML += `<p><b>Lumina:</b> ${data.reply}</p>`;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
